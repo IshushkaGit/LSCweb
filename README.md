@@ -21,7 +21,7 @@
 
 1. Клонируйте репозиторий:
 ```bash
-git clone https://github.com/ваш-username/sms-number-checker.git
+git clone https://github.com/IshushkaGit/LSCweb.git
 cd sms-number-checker
 ```
 
