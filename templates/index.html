@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMS Checker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .copy-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .copy-box:hover {
+            background: #e9ecef;
+        }
+        .progress {
+            height: 30px;
+            margin: 20px 0;
+        }
+        .list-group-item {
+            margin: 5px 0;
+            border-radius: 5px !important;
+        }
+        .links {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <!-- Заголовок -->
+        <div class="text-center mb-5">
+            <h1 class="display-5">🔍 SMS Checker Pro</h1>
+            <p class="text-muted">Проверка доступности номеров в реальном времени</p>
+        </div>
+
+        <!-- Панель управления -->
+        <div class="card shadow mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <select class="form-select" id="serviceSelect">
+                            {% for service in services %}
+                                <option value="{{ service }}">{{ service | upper }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button 
+                            class="btn btn-primary w-100" 
+                            id="startButton"
+                            onclick="startCheck()">
+                            🚀 Начать проверку
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Прогресс-бар -->
+        <div class="progress">
+            <div 
+                id="progressBar" 
+                class="progress-bar progress-bar-striped progress-bar-animated" 
+                role="progressbar" 
+                style="width: 0%">
+                <span id="progressText">0%</span>
+            </div>
+        </div>
+
+        <!-- Результаты -->
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Результаты проверки</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group mb-3" id="resultsList"></div>
+                
+                <div class="copy-box" onclick="copyCodes()">
+                    <div class="text-muted small mb-2">Коды для копирования:</div>
+                    <code id="countryCodes" class="d-block"></code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ссылки -->
+        <div class="links text-center">
+            <a href="https://t.me/chroniumstore" 
+               target="_blank" 
+               class="btn btn-outline-dark btn-sm me-2">
+                📢 Наш Telegram
+            </a>
+            <a href="http://www.cogdanibud.dodelay" 
+               target="_blank" 
+               class="btn btn-outline-dark btn-sm me-2">
+                📦 Каталог сервисов
+            </a>
+            <a href="http://www.instruction.com" 
+               target="_blank" 
+               class="btn btn-outline-danger btn-sm" 
+               title="Официальная инструкция">
+                📘 Инструкция
+            </a>
+        </div>
+    </div>
+
+    <script>
+        let currentTaskId = null;
+
+        // Запуск проверки
+        function startCheck() {
+            const btn = document.getElementById('startButton');
+            btn.disabled = true;
+            
+            // Сброс прогресса
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressText').textContent = '0%';
+            document.getElementById('resultsList').innerHTML = '';
+            document.getElementById('countryCodes').textContent = '';
+
+            // Отправка запроса
+            fetch('/check', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    service: document.getElementById('serviceSelect').value
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                currentTaskId = data.task_id;
+                checkProgress();
+            });
+        }
+
+        // Проверка прогресса
+        function checkProgress() {
+    fetch(`/progress/${currentTaskId}`)
+    .then(res => res.json())
+    .then(data => {
+        const progress = (data.progress / data.total) * 100;
+        
+        // Плавное обновление прогресс-бара
+        document.getElementById('progressBar').style.width = `${progress}%`;
+        document.getElementById('progressText').textContent = `${Math.round(progress)}%`;
+
+        // Построчное обновление результатов
+        const resultsList = document.getElementById('resultsList');
+        resultsList.innerHTML = data.results.map(item => `
+            <div class="list-group-item list-group-item-success d-flex justify-content-between align-items-center">
+                <span>${item.country_name}</span>
+                <span class="badge bg-primary rounded-pill">${item.country_code}</span>
+            </div>
+        `).join('');
+
+        // Обновление кодов для копирования
+        document.getElementById('countryCodes').textContent = 
+            data.results.map(item => item.country_code).join(', ');
+
+        // Продолжаем опрос, если задача не завершена
+        if (progress < 100) {
+            setTimeout(checkProgress, 1000); // Интервал увеличен до 1 сек
+        } else {
+            document.getElementById('startButton').disabled = false;
+        }
+    });
+}
+
+        // Копирование кодов
+        function copyCodes() {
+            const text = document.getElementById('countryCodes').textContent;
+            if (!text) return;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const box = document.querySelector('.copy-box');
+                box.style.background = '#d1e7dd';
+                setTimeout(() => box.style.background = '#f8f9fa', 1000);
+            });
+        }
+    </script>
+</body>
+</html>
